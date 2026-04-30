@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camera Scanner Checkout</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Include the HTML5 QR Code library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 
@@ -21,26 +20,31 @@
         </div>
 
         <h1 class="text-3xl font-bold text-gray-800 mb-2">Scan Item</h1>
-        <p class="text-gray-500 mb-6">Use your camera or type the barcode.</p>
 
         <!-- Flash Messages -->
         @if (session('success'))
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"
-                role="alert">
-                <strong class="font-bold">Success!</strong>
-                <span class="block sm:inline">{{ session('success') }}</span>
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+                <strong class="font-bold">Success!</strong> {{ session('success') }}
             </div>
         @endif
 
         @if (session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <strong class="font-bold">Error!</strong>
-                <span class="block sm:inline">{{ session('error') }}</span>
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                <strong class="font-bold">Error!</strong> {{ session('error') }}
             </div>
         @endif
 
-        <!-- The Camera Viewfinder will appear inside this div -->
-        <div id="reader" class="w-full mb-6 overflow-hidden rounded-lg border-2 border-gray-200"></div>
+        <!-- Camera Viewfinder -->
+        <div id="reader"
+            class="w-full mb-4 overflow-hidden rounded-lg border-2 border-gray-200 bg-black min-h-[250px] flex items-center justify-center">
+            <span class="text-white text-sm" id="camera-status">Camera off</span>
+        </div>
+
+        <!-- NEW: Explicit Button to trigger camera -->
+        <button type="button" id="start-camera-btn"
+            class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded hover:bg-green-700 transition duration-200 mb-6 shadow-md">
+            📸 Tap to Open Camera
+        </button>
 
         <!-- The Form -->
         <form action="{{ route('checkout.store') }}" method="POST" id="checkout-form">
@@ -61,14 +65,16 @@
 
     </div>
 
-    <!-- The Scanning Logic -->
+    <!-- Revised JavaScript Logic -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const inputField = document.getElementById('sku_label');
             const manualSubmitBtn = document.getElementById('manual-submit');
             const form = document.getElementById('checkout-form');
+            const startBtn = document.getElementById('start-camera-btn');
+            const statusText = document.getElementById('camera-status');
 
-            // Show submit button if user starts typing manually
+            // Show submit button if user types manually
             inputField.addEventListener('input', function() {
                 if (this.value.length > 0) {
                     manualSubmitBtn.classList.remove('hidden');
@@ -77,33 +83,45 @@
                 }
             });
 
-            // What happens when the camera successfully reads a barcode?
-            function onScanSuccess(decodedText, decodedResult) {
-                // 1. Stop the scanner so it doesn't scan the same item 50 times a second
-                html5QrcodeScanner.clear();
+            // We use the lower-level Html5Qrcode class to bypass the default UI
+            const html5QrCode = new Html5Qrcode("reader");
 
-                // 2. Put the scanned text into our input field
-                inputField.value = decodedText;
+            startBtn.addEventListener('click', () => {
+                statusText.style.display = 'none';
+                startBtn.innerText = "Requesting Permission...";
 
-                // 3. Automatically submit the form!
-                form.submit();
-            }
-
-            // Initialize the scanner
-            let html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", {
-                    fps: 10,
-                    qrbox: {
-                        width: 250,
-                        height: 250
+                // Start the camera specifically requesting the back camera ("environment")
+                html5QrCode.start({
+                        facingMode: "environment"
+                    }, {
+                        fps: 10,
+                        qrbox: {
+                            width: 250,
+                            height: 250
+                        }
+                    },
+                    (decodedText, decodedResult) => {
+                        // ON SUCCESS:
+                        html5QrCode.stop().then(() => {
+                            inputField.value = decodedText;
+                            form.submit();
+                        });
+                    },
+                    (errorMessage) => {
+                        // Frame errors happen multiple times a second, we ignore them
                     }
-                },
-                /* verbose= */
-                false
-            );
-
-            // Render it to the screen
-            html5QrcodeScanner.render(onScanSuccess);
+                ).then(() => {
+                    // Camera started successfully
+                    startBtn.innerText = "Scanning... Point at barcode";
+                    startBtn.classList.replace('bg-green-600', 'bg-gray-500');
+                    startBtn.disabled = true;
+                }).catch((err) => {
+                    // If the browser STILL blocks it, it will tell us exactly why here!
+                    alert("Camera Error: " + err);
+                    startBtn.innerText = "📸 Tap to Open Camera";
+                    statusText.style.display = 'block';
+                });
+            });
         });
     </script>
 </body>
