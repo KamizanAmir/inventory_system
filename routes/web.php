@@ -18,6 +18,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/checkout', [LoanController::class, 'create'])->name('checkout.create');
     Route::post('/checkout', [LoanController::class, 'store'])->name('checkout.store');
+    // Asset Management
+    Route::get('/assets/create', [AssetController::class, 'create'])->name('assets.create');
+    Route::post('/assets', [AssetController::class, 'store'])->name('assets.store');
+    // Category Management
+    Route::get('/categories/create', [App\Http\Controllers\CategoryController::class, 'create'])->name('categories.create');
+    Route::post('/categories', [App\Http\Controllers\CategoryController::class, 'store'])->name('categories.store');
 });
 
 // (Leave the standard Breeze Profile/Auth routes at the bottom of the file)
