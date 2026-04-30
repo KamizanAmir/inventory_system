@@ -19,10 +19,13 @@ class LoanController extends Controller
     {
         // 1. Validate the input
         $request->validate([
-            'sku_label' => 'required|string'
+            'sku_label' => 'required|string',
+            'quantity' => 'nullable|integer|min:1' // The new quantity field
         ]);
 
-        // 2. Find the physical item in the database
+        $takeQty = $request->quantity ?? 1;
+
+        // 2. Find the physical item
         $asset = Asset::where('sku_label', $request->sku_label)->first();
 
         // 3. Safety checks
@@ -34,14 +37,37 @@ class LoanController extends Controller
             return back()->with('error', 'Warning: This item is damaged and cannot be checked out!');
         }
 
-        // 4. Smart Scan Logic: Checkout or Check-in?
-        if ($asset->status == 'In Store') {
+        // ==========================================
+        // SCENARIO A: IT IS A CONSUMABLE (Cable, Battery)
+        // ==========================================
+        if ($asset->is_consumable) {
 
-            // It's in the store, so loan it out
+            if ($asset->quantity < $takeQty) {
+                return back()->with('error', "Not enough stock! Only {$asset->quantity} left in store.");
+            }
+
+            // Deduct the inventory
+            $asset->decrement('quantity', $takeQty);
+
+            // Log who took it so we know which department used it
             Loan::create([
                 'asset_id' => $asset->id,
-                // Note: We hardcode user_id 1 for now until you set up a login system!
-                'user_id' => 1,
+                'user_id' => auth()->id(), // Uses the logged-in user!
+                'borrowed_at' => now(),
+                'location_notes' => "Withdrew {$takeQty} units."
+            ]);
+
+            return back()->with('success', "Checked Out: {$takeQty}x {$asset->category->name}. Remaining: {$asset->quantity}");
+        }
+
+        // ==========================================
+        // SCENARIO B: IT IS A UNIQUE TOOL (Cangkul)
+        // ==========================================
+        if ($asset->status == 'In Store') {
+
+            Loan::create([
+                'asset_id' => $asset->id,
+                'user_id' => auth()->id(), // Uses the logged-in user!
                 'borrowed_at' => now(),
             ]);
 
@@ -50,18 +76,15 @@ class LoanController extends Controller
             return back()->with('success', "Checked Out: {$asset->sku_label} ({$asset->category->name})");
         } elseif ($asset->status == 'Loaned') {
 
-            // It's already loaned, so this scan means they are returning it
             $activeLoan = $asset->activeLoan;
-
             if ($activeLoan) {
                 $activeLoan->update(['returned_at' => now()]);
             }
-
             $asset->update(['status' => 'In Store']);
 
             return back()->with('success', "Returned: {$asset->sku_label} is back in the store.");
         }
 
-        return back()->with('error', 'Item is in an unknown state (Lost/Under Maintenance).');
+        return back()->with('error', 'Item is in an unknown state.');
     }
 }

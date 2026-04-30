@@ -2,19 +2,23 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AssetController;
+use App\Http\Controllers\LoanController;
 
+// Redirect standard Laravel welcome to our login page
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Protect our Inventory system so only logged-in users can use it
+Route::middleware(['auth'])->group(function () {
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // We will use your dashboard as the main landing page
+    Route::get('/dashboard', [AssetController::class, 'index'])->name('dashboard');
+
+    Route::get('/checkout', [LoanController::class, 'create'])->name('checkout.create');
+    Route::post('/checkout', [LoanController::class, 'store'])->name('checkout.store');
 });
 
-require __DIR__.'/auth.php';
+// (Leave the standard Breeze Profile/Auth routes at the bottom of the file)
+require __DIR__ . '/auth.php';

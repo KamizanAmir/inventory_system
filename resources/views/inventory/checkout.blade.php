@@ -14,7 +14,7 @@
     <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md text-center">
 
         <div class="mb-6 text-left">
-            <a href="{{ route('inventory.index') }}" class="text-blue-500 hover:underline text-sm font-semibold">
+            <a href="{{ route('dashboard') }}" class="text-blue-500 hover:underline text-sm font-semibold">
                 &larr; Back to Dashboard
             </a>
         </div>
@@ -50,7 +50,19 @@
         <form action="{{ route('checkout.store') }}" method="POST" id="checkout-form">
             @csrf
             <div class="mb-4">
-                <p class="text-sm text-gray-400 mb-2 font-bold uppercase">Or enter manually:</p>
+                <div class="mb-4 flex space-x-2">
+                    <div class="w-1/3">
+                        <p class="text-xs text-gray-500 mb-1 font-bold uppercase text-left">Qty (Consumables)</p>
+                        <input type="number" name="quantity" id="quantity" value="1" min="1"
+                            class="w-full text-center text-xl p-3 border-2 border-gray-300 rounded focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="w-2/3">
+                        <p class="text-xs text-gray-500 mb-1 font-bold uppercase text-left">Barcode / SKU</p>
+                        <input type="text" name="sku_label" id="sku_label"
+                            class="w-full text-center text-xl p-3 border-2 border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                            placeholder="e.g. CK-01" autocomplete="off">
+                    </div>
+                </div>
                 <input type="text" name="sku_label" id="sku_label"
                     class="w-full text-center text-xl p-3 border-2 border-gray-300 rounded focus:outline-none focus:border-blue-500"
                     placeholder="e.g. CK-01" autocomplete="off">
